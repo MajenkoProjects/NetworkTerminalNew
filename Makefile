@@ -2,7 +2,7 @@ BOARD=esp32:esp32:esp32
 OPTS=PSRAM=enabled,FlashSize=4M,PartitionScheme=default,CPUFreq=240
 SKETCH=NetworkTerminalNew
 HOST=lat-01-07
-PASS=spoon
+PASS=password
 
 
 SUBDIR=$(subst :,.,$(BOARD))
