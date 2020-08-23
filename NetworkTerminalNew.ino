@@ -327,7 +327,7 @@ void progressOTA(unsigned int total, unsigned int size) {
 
 void otaProcessor(void *arg) {
     ArduinoOTA.setHostname(settings.name);
-    ArduinoOTA.setPassword("wibble"); // Need to put this in settings
+    ArduinoOTA.setPassword(settings.password);
     ArduinoOTA.onStart(beginOTA);
     ArduinoOTA.onEnd(endOTA);
     ArduinoOTA.onError(errorOTA);
