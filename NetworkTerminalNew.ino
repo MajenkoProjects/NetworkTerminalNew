@@ -1,20 +1,20 @@
 /* Copyright (c) 2020, Majenko Technologies
  *  All rights reserved.
- *  
+ *
  *  Redistribution and use in source and binary forms, with or without modification,
  *  are permitted provided that the following conditions are met:
- *  
+ *
  *  * Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- *  
+ *
  *  * Redistributions in binary form must reproduce the above copyright notice, this
  *    list of conditions and the following disclaimer in the documentation and/or
  *    other materials provided with the distribution.
- *  
+ *
  *  * Neither the name of Majenko Technologies nor the names of its
  *    contributors may be used to endorse or promote products derived from
  *    this software without specific prior written permission.
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -27,14 +27,14 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "fabgl.h"
+#include <fabgl.h>
 #include <WiFi.h>
 #include <ArduinoOTA.h>
 #include <CommandParser.h>
+#include <HTTPUpdate.h>
 #include <nvs.h>
 #include <nvs_flash.h>
 #include "network/ICMP.h"
-
 
 #define INRED(X) "\e[31m" X "\e[37m"
 #define INGREEN(X) "\e[32m" X "\e[37m"
@@ -43,6 +43,11 @@
 #define INMAGENTA(X) "\e[35m" X "\e[37m"
 #define INCYAN(X) "\e[36m" X "\e[37m"
 #define INWHITE(X) "\e[37m" X "\e[37m"
+
+#define VERSION "1.0.0"
+#define FABGLVER "0.9.0"
+
+
 
 CommandParser CP;
 
@@ -115,7 +120,7 @@ void initSettings() {
     ArduinoOTA.setHostname(settings.name);
 }
 
-void exe_prompt() {
+void runPrompt() {
     if (priv) {
         Terminal.write("Priv> ");
     } else {
@@ -124,7 +129,7 @@ void exe_prompt() {
     state = State::PromptInput;
 }
 
-void exe_askpass() {
+void runAskPass() {
     // Setting the text to black is a bit of a hack.
     // But, until there's a "no echo" setting then
     // it's the best we can do with the tools we have.
@@ -132,7 +137,7 @@ void exe_askpass() {
     state = State::Pass;
 }
 
-void exe_promptInput() {
+void runPromptInput() {
     LineEditor.setText("");
     LineEditor.edit();
     auto inputLine = LineEditor.get();
@@ -144,14 +149,14 @@ void exe_promptInput() {
         state = State::Prompt;
         return;
     }
-        
+
     if (CP.process((char *)inputLine) == -1) {
         Terminal.println("*** Error: Unknown command");
         state = State::Prompt;
     }
 }
 
-void exe_passInput() {
+void runPassInput() {
     LineEditor.setText("");
     LineEditor.edit();
     auto inputLine = LineEditor.get();
@@ -217,7 +222,7 @@ int clientWaitForChar() {
 }
 
 
-void exe_telnet() {
+void runTelnet() {
     // process data from remote host (up to 1024 codes at the time)
     for (int i = 0; client[session].available() && i < 1024; ++i) {
         int c = client[session].read();
@@ -314,11 +319,13 @@ void beginOTA() {
 void endOTA() {
     state = State::Prompt;
     Terminal.println(INGREEN("OTA update completed."));
+    state = State::Prompt;
 }
 
 void errorOTA(ota_error_t err) {
     state = State::Prompt;
     Terminal.printf(INRED("\r\n\r\n*** ERROR %d while performing OTA update!\r\n"), err);
+    state = State::Prompt;
 }
 
 void progressOTA(unsigned int total, unsigned int size) {
@@ -439,7 +446,7 @@ COMMAND(reconnectSession) {
 
     if (!client[sess].connected()) {
         Terminal.println("*** Error: Session not connected");
-        state = State::Prompt;  
+        state = State::Prompt;
         return 10;
     }
 
@@ -451,7 +458,7 @@ COMMAND(reconnectSession) {
 
 COMMAND(set) {
     // In unpriv mode there's only one thing we can do: set priv
-    if (!priv) { 
+    if (!priv) {
         if (argc != 2) return -1;
         if (strcmp(argv[1], "priv") != 0) return -1;
         state = State::AskPass;
@@ -523,6 +530,10 @@ COMMAND(set) {
 
 COMMAND(info) {
     if (!priv) return -1;
+
+    Terminal.println(INGREEN("WiFi Terminal Version " VERSION " (c) 2020 Majenko Technologies"));
+    Terminal.println(INGREEN("FabGL Version " FABGLVER " (c) 2019-2020 Fabrizio Di Vittorio"));
+    Terminal.println();
     Terminal.printf("ssid        : %s\r\n", settings.ssid);
     Terminal.printf("psk         : %s\r\n", settings.psk);
     Terminal.printf("name        : %s\r\n", settings.name);
@@ -580,30 +591,30 @@ void loop() {
     switch (state) {
 
         case State::Prompt:
-            exe_prompt();
+            runPrompt();
             break;
 
         case State::PromptInput:
-            exe_promptInput();
+            runPromptInput();
             break;
 
         case State::AskPass:
-            exe_askpass();
+            runAskPass();
             break;
-    
+
         case State::Pass:
-            exe_passInput();
+            runPassInput();
             break;
 
         case State::Telnet:
-            exe_telnet();
+            runTelnet();
             break;
 
         case State::OTA:
             break;
 
         default:
-            Terminal.write("\r\nNot Implemeted\r\n");
+            Terminal.write("\r\nState Error\r\n");
             state = State::Prompt;
             break;
 
