@@ -14,7 +14,7 @@ This enhanced and re-written version includes:
 
 Requires:
 
-* FabGL - https://fabgl.org
-* CommandParser - [TBA]
+* FabGL - https://github.com/fdivitto/FabGL
+* CommandParser - https://github.com/MajenkoLibraries/CommandParser
 
 Tested on V1.4 of the TTGO ESP32 VGA board.
