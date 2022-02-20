@@ -178,9 +178,7 @@ COMMAND(scan) {
     static char const * ENC2STR[] = { "Open", "WEP", "WPA-PSK", "WPA2-PSK", "WPA/WPA2-PSK", "WPA-ENTERPRISE" };
     Terminal.write("Scanning...");
     Terminal.flush();
-    fabgl::suspendInterrupts();
     int networksCount = WiFi.scanNetworks();
-    fabgl::resumeInterrupts();
     Terminal.printf("%d network(s) found\r\n", networksCount);
     if (networksCount) {
         Terminal.write   ("\e[90m #\e[4GSSID\e[45GRSSI\e[55GCh\e[60GEncryption\e[37m\r\n");
@@ -197,7 +195,6 @@ void connectToWiFi() {
     if (settings.psk == NULL) return;
     Terminal.write("Connecting WiFi...");
     Terminal.flush();
-    AutoSuspendInterrupts autoInt;
     WiFi.disconnect(true, true);
     for (int i = 0; i < 2; ++i) {
         WiFi.begin(settings.ssid, settings.psk);
@@ -208,7 +205,6 @@ void connectToWiFi() {
     if (WiFi.status() == WL_CONNECTED) {
         Terminal.printf("connected to %s, IP is %s\r\n", WiFi.SSID().c_str(), WiFi.localIP().toString().c_str());
         error = false;
-        startOta();
     } else {
         Terminal.write("failed!\r\n");
     }
@@ -259,6 +255,7 @@ void runTelnet() {
     while (Terminal.available()) {
         client[session].write( Terminal.read() );
     }
+
     // return to prompt?
     if (!client[session].connected()) {
         client[session].stop();
@@ -396,6 +393,7 @@ COMMAND(openSession) {
 
     Terminal.printf("Trying %s...\r\n", argv[1]);
     if (client[session].connect(argv[1], port)) {
+        client[session].setNoDelay(true);
         Terminal.printf("Connected to %s\r\n", client[session].remoteIP().toString().c_str());
         state = State::Telnet;
         return 0;
@@ -471,6 +469,17 @@ COMMAND(set) {
         return 10;
     }
 
+    if (strcmp(argv[1], "ota") == 0) {
+        if (strcmp(argv[2], "enable") == 0) {
+            startOta();
+            Terminal.println("OTA enabled");
+        } else {
+            stopOta();
+            Terminal.println("OTA disabled");
+        }
+        state = State::Prompt;
+        return 0;
+    }
     if (strcmp(argv[1], "ssid") == 0) {
         if (settings.ssid != NULL) {
             free(settings.ssid);
@@ -550,6 +559,20 @@ COMMAND(info) {
     return 0;
 }
 
+COMMAND(help) {
+    Terminal.println("open <host> [<port>]");
+    Terminal.println("sessions");
+    Terminal.println("session <id>");
+    Terminal.println("set <key> <value>");
+    if (priv) Terminal.println("exit");
+    Terminal.println("info");
+    Terminal.println("exit");
+    Terminal.println("scan");
+    Terminal.println("ping <host>");
+    state = State::Prompt;
+    return 0;
+}
+
 COMMAND(exitPriv) {
     if (!priv) return -1;
     priv = false;
@@ -582,6 +605,7 @@ void setup() {
     CP.addCommand("exit", exitPriv);
     CP.addCommand("scan", scan);
     CP.addCommand("ping", ping);
+    CP.addCommand("help", help);
 
     connectToWiFi();
 }
