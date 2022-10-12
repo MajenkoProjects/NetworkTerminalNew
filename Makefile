@@ -2,7 +2,7 @@ BOARD=esp32:esp32:esp32
 OPTS=PSRAM=enabled,FlashSize=4M,PartitionScheme=min_spiffs,CPUFreq=240
 SKETCH=$(shell basename $$(pwd))
 HOST=192.168.0.69
-PASS=wibble
+PASS=changeme
 PORT?=/dev/ttyUSB0
 
 
